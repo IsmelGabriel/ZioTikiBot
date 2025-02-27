@@ -1,0 +1,18 @@
+{
+    "beneficios vip": {
+        "tipo": "item",
+        "precio": 500
+    },
+    "『level 10』": {
+        "tipo": "rol",
+        "precio": 500
+    },
+    "『level 15』": {
+        "tipo": "rol",
+        "precio": 700
+    },
+    "『level 20』": {
+        "tipo": "rol",
+        "precio": 1000
+    }
+}

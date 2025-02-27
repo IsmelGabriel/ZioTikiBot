@@ -1,0 +1,12 @@
+#archivos de configuracion con claves sensibles
+config.json
+.env
+
+mineral-cell-445420-j5-929aad425846.json
+.env
+
+ziotikibot-ydah-cd7bbe4d48a4.json
+.env
+
+#archivos de registros ( logs )
+*.log
