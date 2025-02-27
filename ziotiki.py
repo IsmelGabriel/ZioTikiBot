@@ -40,6 +40,9 @@ async def on_ready():
 @bot.event
 async def on_disconnect():
     print(f"{bot.user} is offline!.")
+@bot.event
+async def on_connect():
+    print(f"{bot.user} is back!.")
 
 async def cambiar_status():
     while True:
