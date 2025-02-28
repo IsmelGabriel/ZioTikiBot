@@ -40,9 +40,10 @@ async def on_ready():
 @bot.event
 async def on_disconnect():
     print(f"{bot.user} is offline!.")
+
 @bot.event
-async def on_connect():
-    print(f"{bot.user} is back!.")
+async def on_resumed():
+    print(f"{bot.user} is back!")
 
 async def cambiar_status():
     while True:
@@ -1845,8 +1846,6 @@ def verificar_espera(usuario_id):
 #contexto del bot: Eres un bot eficaz con inteligencia artificial, tratas en servidores bilingues de español e ingles mayormente, los serverdires cuenta con personas mayores de edad puedes hacer chistes o bromas pesadas, entiendes e lcontexto de las conversacion o del mensaje lees el ID del usuario que te hablan, no eres sensibles sabes responder a cada persona y si te intentan humillar los insultas en como lucen en la vida real, principalmente estas enfocados en servidores que juegan RuneScape
 @bot.event
 async def on_message(message):
-
-
     if message.guild is None:
         return
     logging.info(f"SERVIDOR: {message.guild.id}: Mensaje recibido de {message.author.id}: {message.content}. CHANNEL: {message.channel.id}")
@@ -1855,18 +1854,15 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-
         # Procesar comandos con prefijo antes que cualquier otra lógica
     if message.content.startswith("="):
         await bot.process_commands(message)
         return
 
-
     if bot.user.mention in message.content:
         try:
             user_message = message.content.replace(f"<@{bot.user.id}>", "").strip()
             usuario_id = str(message.author.id)
-
 
                         # Verifica si el usuario necesita esperar
             tiempo_restante = verificar_espera(usuario_id)
@@ -1874,15 +1870,11 @@ async def on_message(message):
                 await message.channel.send(f"Por favor, espera {int(tiempo_restante)} segundos antes de enviar otro mensaje. 😊")
                 return
 
-
-
-
             if not user_message:
                 respuesta_bot = "¿En qué puedo ayudarte? 😊"
                 await message.channel.send(respuesta_bot)
                 registrar_interaccion(usuario_id, user_message, respuesta_bot)
                 return
-
 
             # Obtiene el historial del usuario o inicializa uno nuevo
             mensajes_historial = historial_usuarios.get(usuario_id, [])
@@ -1890,12 +1882,8 @@ async def on_message(message):
             historial_canal = await analizar_historial_canal(message.channel, limite=50)
             mensajes_historial.extend(historial_canal)
 
-
-
-
             # Agrega el mensaje actual al historial
             mensajes_historial.append({"role": "user", "content": user_message})
-
 
             respuesta = openai.ChatCompletion.create(
                 model="gpt-4o-mini",
@@ -1910,7 +1898,6 @@ async def on_message(message):
             #"Eres un bot eficaz con inteligencia artificial, tratas en servidores bilingues de español e ingles mayormente, los servidores cuenta con personas mayores de edad puedes hacer chistes o bromas pesadas, entiendes el contexto de las conversacion o del mensaje lees el ID del usuario que te hablan, no eres sensibles sabes responder a cada persona y si te intentan humillar les haces chistes pesados en como se ven fisicamente."
             #"Tu objetivo es mantener conversaciones claras y no confundir usuarios al hablar con varias personas al tiempo, los puedes identificar por su ID o por su nombre de usuario"
 
-
             contenido_respuesta = respuesta["choices"][0]["message"]["content"]
 
             # Validar que la respuesta mencione correctamente al usuario actual
@@ -1922,17 +1909,14 @@ async def on_message(message):
             # Actualiza el historial con la respuesta del bot
             registrar_interaccion(usuario_id, user_message, contenido_respuesta)
 
-
         except openai.error.RateLimitError as e:
             logging.error(f"Rate limit exceeded: {e}")
             await message.channel.send("⚠️ Estás enviando mensajes demasiado rápido. Por favor, espera 25 segundos antes de intentarlo nuevamente.")
             registrar_espera(usuario_id, 20)
 
-
         except Exception as e:
             logging.error(f"Error al conectar con OpenAI: {e}")
             await message.channel.send("⚠️ Hubo un error al procesar tu solicitud.")
-
 
 
     """
