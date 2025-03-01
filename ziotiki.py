@@ -11,7 +11,7 @@ import re
 #from keep_alive import keep_alive
 from asyncio import Lock
 from discord import app_commands # type: ignore
-from datetime import date
+from datetime import datetime, timedelta
 from discord.ext import commands # type: ignore
 from itertools import cycle
 
@@ -106,6 +106,77 @@ bot_logs_v1.log fecha inicio: 2025/01/09 - fecha fin:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+"""
+sistema de seguridad anti-hacking (detectara links hacks o multi cuentas, anti-spam y borrara o baneara al usuario segun la accion)
+"""
+security_settings = {}
+
+#cargar configuraciones de segurdad desde un archivo json
+def cargar_configuracion_seguridad():
+    try:
+        with open("security_settings.json", "r") as file:
+            print(f"✅ Configuración de seguridad cargada correctamente")
+            return json.load(file)
+    except FileNotFoundError:
+        print(f"Archivo de configuración de seguridad no encontrado. Se inicializan configuraciones vacías.")
+        return {}
+    except json.JSONDecodeError as e:
+        print(f"Error al cargar el archivo de configuración de seguridad: {e}")
+        return {}
+
+# Guardar la configuración de seguridad en un archivo JSON
+def guardar_configuracion_seguridad(config):
+    with open("security_settings.json", "w") as file:
+        json.dump(config, file, indent=4)
+
+# Cargar la configuración inicial
+security_settings = cargar_configuracion_seguridad()
+
+# Función para verificar si un enlace es malicioso
+def es_link_malicioso(link):
+    # Lista de dominios maliciosos conocidos (puedes ampliar esta lista)
+    dominios_maliciosos = ["malicious.com", "phishing.com", "hacksite.com", "https://discord.gg/bestnudes", "steamcommunity.com/gift/01011", "https://discord.gg/webslut"]
+    for dominio in dominios_maliciosos:
+        if dominio in link:
+            return True
+    return False
+
+# Función para verificar si un mensaje es spam
+def es_spam(mensaje):
+    # Aquí puedes implementar tu lógica para detectar spam
+    # Por ejemplo, puedes verificar si el mensaje se repite muchas veces en poco tiempo
+    return False
+
+# Comando para activar o desactivar la detección de spam
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def set_anti_spam(ctx, estado: str):
+    if ctx.guild is None:
+        return
+    guild_id = str(ctx.guild.id)
+    if estado.lower() not in ["on", "off"]:
+        await ctx.send("❌ Estado inválido. Usa `on` o `off`.")
+        return
+
+    if guild_id not in security_settings:
+        security_settings[guild_id] = {}
+
+    security_settings[guild_id]["anti_spam"] = (estado.lower() == "on")
+    guardar_configuracion_seguridad(security_settings)
+    await ctx.send(f"✅ Detección de spam {'activada' if estado.lower() == 'on' else 'desactivada'}.")
 
 
 
@@ -1848,7 +1919,7 @@ def verificar_espera(usuario_id):
 async def on_message(message):
     if message.guild is None:
         return
-    logging.info(f"SERVIDOR: {message.guild.id}: Mensaje recibido de {message.author.id}: {message.content}. CHANNEL: {message.channel.id}")
+    logging.info(f"SERVER: {message.guild.id}: Message sent by: {message.author.id}: {message.content}. CHANNEL: {message.channel.id}")
     if message.author.bot:
         return
     if message.author == bot.user:
@@ -1858,13 +1929,42 @@ async def on_message(message):
     if message.content.startswith("="):
         await bot.process_commands(message)
         return
+    
+    #ignorar al usuario si tiene una partida de trivia o ahorcado en curso
+    if trivia_running.get(message.author.id, False) or ahorcado_running.get(message.author.id, False):
+        return
 
+    guild_id = str(message.guild.id)
+
+
+    # Verificar si el mensaje contiene un enlace malicioso
+    if any(es_link_malicioso(link) for link in re.findall(r'(https?://\S+)', message.content)):
+        await message.delete()
+        if isinstance(message.author, discord.Member):
+            await message.author.timeout(timedelta(weeks=1), reason="Enlace malicioso detectado")
+            await message.channel.send(f"⚠️ {message.author.mention} ha sido puesto en timeout por 1 semana por compartir un enlace malicioso.")
+        else:
+            await message.channel.send(f"⚠️ {message.author.mention} ha compartido un enlace malicioso, pero no se puede aplicar timeout.")
+        return
+
+    # Verificar si la detección de spam está activada y si el mensaje es spam
+    if security_settings.get(guild_id, {}).get("anti_spam", False) and es_spam(message.content):
+        await message.delete()
+        if isinstance(message.author, discord.Member):
+            await message.author.timeout(timedelta(minutes=10), reason="Spam detectado")
+            await message.channel.send(f"⚠️ {message.author.mention} ha sido puesto en timeout por 10 minutos por spam.")
+        else:
+            await message.channel.send(f"⚠️ {message.author.mention} ha enviado spam, pero no se puede aplicar timeout.")
+        return
+
+
+    # Verificar si el bot fue mencionado en el mensaje
     if bot.user.mention in message.content:
         try:
             user_message = message.content.replace(f"<@{bot.user.id}>", "").strip()
             usuario_id = str(message.author.id)
 
-                        # Verifica si el usuario necesita esperar
+            # Verifica si el usuario necesita esperar
             tiempo_restante = verificar_espera(usuario_id)
             if tiempo_restante > 0:
                 await message.channel.send(f"Por favor, espera {int(tiempo_restante)} segundos antes de enviar otro mensaje. 😊")
@@ -1879,7 +1979,7 @@ async def on_message(message):
             # Obtiene el historial del usuario o inicializa uno nuevo
             mensajes_historial = historial_usuarios.get(usuario_id, [])
            
-            historial_canal = await analizar_historial_canal(message.channel, limite=50)
+            historial_canal = await analizar_historial_canal(message.channel, limite=75)
             mensajes_historial.extend(historial_canal)
 
             # Agrega el mensaje actual al historial
@@ -1917,6 +2017,25 @@ async def on_message(message):
         except Exception as e:
             logging.error(f"Error al conectar con OpenAI: {e}")
             await message.channel.send("⚠️ Hubo un error al procesar tu solicitud.")
+    else:
+        # Generar un mensaje aleatorio basado en el contenido del chat utilizando la IA con un porcentaje de respuesta
+        if random.random() < 0.5:  # 80% de probabilidad de responder
+            historial_canal = await analizar_historial_canal(message.channel, limite=75)
+
+            respuesta = openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                    "role": "system", "content": "Entiendes la conversacion de los usuarios y responde con el mismo humor y agresivo no mal interpretas las conversaciones, te adaptas a cualquier conversacion de varias personas."
+                    "Puedes hacer algun chiste una que otra vez sobre los RSPS (RuneScape Private Servers), como en que cualquier momento todos esos juegos van a cerrar y ya no existiran. sin repetir tantos estos chiste tomalo como uno debes en cuando, toma en cuenta mas que todos estos RSPS que son los que mas se juegan 'RoatPKz, Lost City, RuneLite, Runewild'"
+                    },
+                    {"role": "user", "content": message.content}
+                ] + historial_canal,  # Incluye el historial en la solicitud
+                max_tokens=100,
+                temperature=0.8
+            )
+            mensaje_aleatorio = respuesta["choices"][0]["message"]["content"]
+            await message.channel.send(mensaje_aleatorio)
 
 
     """
@@ -1929,7 +2048,6 @@ async def on_message(message):
     Escucha mensajes y aplica las reglas configuradas para reaccionar.
     """
 
-    guild_id = str(message.guild.id)
 
     # Verificar si hay reglas configuradas para el servidor actual
     if guild_id not in reaction_rules:
@@ -1962,6 +2080,9 @@ async def on_message(message):
         except discord.HTTPException as e:
             logging.error(f"Error al reaccionar: {e}")
 
+
+# Guardar configuraciones al cerrar
+atexit.register(guardar_configuracion_seguridad, security_settings)
 
 
 # Ruta del archivo JSON para guardar el historial
@@ -2617,6 +2738,8 @@ async def on_command_error(ctx, error):
         # Maneja otros errores o los muestra en consola
         logging.info(f"Error en el comando {ctx.command}: {error}")
         await ctx.send(get_translation("command_error", ctx.guild.id))
+
+
 
 
 # Ejecutar el bot
