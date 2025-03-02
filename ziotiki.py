@@ -1912,6 +1912,18 @@ def verificar_espera(usuario_id):
             return tiempo_restante  # Devuelve el tiempo restante en segundos
     return 0  # No hay tiempo de espera
 
+temas_conversacion = [
+    "RuneScape Private Server (RSPS)",
+    "Juegos en general",
+    "tecnologia",
+    "programacion",
+    "noticias actuales",
+    "consejos de vida",
+    "deportes"
+]
+
+def seleccionar_tema():
+    return random.choise([tema for tema in temas_conversacion if tema != "RuneScape Private Server (RSPS)"])
 
 
 #contexto del bot: Eres un bot eficaz con inteligencia artificial, tratas en servidores bilingues de español e ingles mayormente, los serverdires cuenta con personas mayores de edad puedes hacer chistes o bromas pesadas, entiendes e lcontexto de las conversacion o del mensaje lees el ID del usuario que te hablan, no eres sensibles sabes responder a cada persona y si te intentan humillar los insultas en como lucen en la vida real, principalmente estas enfocados en servidores que juegan RuneScape
@@ -2019,15 +2031,17 @@ async def on_message(message):
             await message.channel.send("⚠️ Hubo un error al procesar tu solicitud.")
     else:
         # Generar un mensaje aleatorio basado en el contenido del chat utilizando la IA con un porcentaje de respuesta
-        if random.random() < 0.5:  # 80% de probabilidad de responder
+        if random.random() < 0.5:  # 30% de probabilidad de responder
             historial_canal = await analizar_historial_canal(message.channel, limite=75)
+
+            #selecciona un tema de conversacion aleatoria
+            tema_seleccionado = seleccionar_tema()
 
             respuesta = openai.ChatCompletion.create(
                 model="gpt-4o-mini",
                 messages=[
                     {
-                    "role": "system", "content": "Entiendes la conversacion de los usuarios y responde con el mismo humor y agresivo no mal interpretas las conversaciones, te adaptas a cualquier conversacion de varias personas."
-                    "Puedes hacer algun chiste una que otra vez sobre los RSPS (RuneScape Private Servers), como en que cualquier momento todos esos juegos van a cerrar y ya no existiran. sin repetir tantos estos chiste tomalo como uno debes en cuando, toma en cuenta mas que todos estos RSPS que son los que mas se juegan 'RoatPKz, Lost City, RuneLite, Runewild'"
+                    "role": "system", "content": f"Entiendes la conversacion de los usuarios y responde con el mismo humor y agresivo no mal interpretas las conversaciones, te adaptas a cualquier conversacion de varias personas. Hoy vamos a hablar sobre {tema_seleccionado}"
                     },
                     {"role": "user", "content": message.content}
                 ] + historial_canal,  # Incluye el historial en la solicitud
