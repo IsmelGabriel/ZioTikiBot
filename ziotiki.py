@@ -8,6 +8,8 @@ import openai  # type: ignore
 import os
 import atexit
 import re
+import requests
+import collections
 #from keep_alive import keep_alive
 from asyncio import Lock
 from discord import app_commands # type: ignore
@@ -21,6 +23,7 @@ from itertools import cycle
 intents = discord.Intents.all()
 intents.voice_states = True #activar para manejar eventos de voz
 intents.message_content = True  # Para leer el contenido de los mensajes
+intents.messages = True  # Para detectar cuando los mensajes son enviados
 intents.members = True  # Para detectar cuando los miembros se unen al servidor
 bot = commands.Bot(command_prefix="=", intents=intents, heartbeat_timeout=60, help_command=None)
 
@@ -74,6 +77,8 @@ def cargar_configuracion():
 config = cargar_configuracion()
 DISCORD_TOKEN = config.get("discord_token")
 OPENAI_API_KEY = config.get("openai_api_key")
+VIRUSTOTAL_API_KEY = config.get("virustotal_api_key")
+SAFEBROWSING_API_KEY = config.get("safebrowsing_api_key")
         
 # Cargar configuraciones
 #DISCORD_TOKEN = os.getenv("discord_token")
@@ -145,14 +150,49 @@ def guardar_configuracion_seguridad(config):
 # Cargar la configuración inicial
 security_settings = cargar_configuracion_seguridad()
 
-# Función para verificar si un enlace es malicioso
-def es_link_malicioso(link):
-    # Lista de dominios maliciosos conocidos (puedes ampliar esta lista)
-    dominios_maliciosos = ["malicious.com", "phishing.com", "hacksite.com", "https://discord.gg/bestnudes", "steamcommunity.com/gift/01011", "https://discord.gg/webslut"]
-    for dominio in dominios_maliciosos:
-        if dominio in link:
-            return True
+
+acortadores = ["bit.ly", "tinyurl.com", "t.co", "shorturl.at", "cutt.ly", "is.gd"]
+
+def expandir_link(url):
+    try:
+        response = requests.head(url, allow_redirects=True)
+        return response.url
+    except:
+        return url
+
+def verificar_virustotal(link):
+    url = f"https://www.virustotal.com/vtapi/v2/url/report?apikey={VIRUSTOTAL_API_KEY}&resource={link}"
+    response = requests.get(url).json()
+    if response.get("positives", 0) > 0:
+        return True
     return False
+
+def verificar_google(link):
+    url = f"https://safebrowsing.googleapis.com/v4/threatMatches:find?key={SAFEBROWSING_API_KEY}"
+    datos = {
+        "client": {
+            "clientId": "discord-bot",
+            "clientVersion": "1.0"
+        },
+        "threatInfo": {
+            "threatTypes": ["MALWARE", "SOCIAL_ENGINEERING"],
+            "platformTypes": ["ANY_PLATFORM"],
+            "threatEntryTypes": ["URL"],
+            "threatEntries": [{"url": link}]
+        }
+    }
+    response = requests.post(url, json=datos).json()
+    return "matches" in response
+
+def es_link_malicioso(link):
+    for acortador in acortadores:
+        if acortador in link:
+            link = expandir_link(link)
+    if verificar_virustotal(link) or verificar_google(link):
+        return True
+    return False
+
+
 
 # Función para verificar si un mensaje es spam
 def es_spam(mensaje):
@@ -163,7 +203,7 @@ def es_spam(mensaje):
 # Comando para activar o desactivar la detección de spam
 @bot.command()
 @commands.has_permissions(administrator=True)
-async def set_anti_spam(ctx, estado: str):
+async def anti_spam(ctx, estado: str):
     if ctx.guild is None:
         return
     guild_id = str(ctx.guild.id)
@@ -432,9 +472,9 @@ async def mute(ctx, member: discord.Member = None, time: int = None, *, razon="N
 
     try:
         # Buscar o crear el rol "Silenciado"
-        role = discord.utils.get(ctx.guild.roles, name="mute")
+        role = discord.utils.get(ctx.guild.roles, name="MUTE")
         if not role:
-            role = await ctx.guild.create_role(name="mute")
+            role = await ctx.guild.create_role(name="MUTE")
             for channel in ctx.guild.channels:
                 await channel.set_permissions(role, speak=False, send_messages=False)
 
@@ -472,8 +512,11 @@ async def unmute(ctx, member: discord.Member = None):
 
     try:
         # Buscar el rol "mute"
-        role = discord.utils.get(ctx.guild.roles, name="mute")
+        role = discord.utils.get(ctx.guild.roles, name="MUTE")
+
+        #si el rol no existe crea uno
         if not role:
+
             await ctx.send(get_translation("unmute_rol_not_found", ctx.guild.id))
             return
 
@@ -504,23 +547,23 @@ async def set_logs_channel(ctx, channel_mention: str = None):
         return
     
     if channel_mention is None:
-        await ctx.send(get_translation("set_log_channel_usage", ctx.guild.id, channel=channel_mention))
+        await ctx.send(get_translation("set_log_command_usage", ctx.guild.id, channel=channel_mention))
         return
     try:
         match = re.match(r"<#(\d+)>", channel_mention)
         if not match:
-            await ctx.send(get_translation("set_log_channel_not_found", ctx.guild.id))
+            await ctx.send(get_translation("set_log_command_channel_none", ctx.guild.id))
             return
         
         channel_id = int(match.group(1))
         channel = ctx.guild.get_channel(channel_id)
         if channel is None:
-            await ctx.send(get_translation("set_log_channel_not_found", ctx.guild.id))
+            await ctx.send(get_translation("set_log_command_channel_none", ctx.guild.id))
             return
         
         logs_channels[ctx.guild.id] = channel_id
         guardar_logs_config()
-        await ctx.send(get_translation("set_log_channel_success", ctx.guild.id, channel=channel.mention))
+        await ctx.send(get_translation("set_log_command_success", ctx.guild.id, channel=channel.mention))
         logging.info(f"SERVER: {ctx.guild.id}: Command '=set_logs_channel' executed by {ctx.author.id} in server {ctx.guild.name}")
     except Exception as e:
         await ctx.send(get_translation("set_log_channel_error", ctx.guild.id))
@@ -536,11 +579,11 @@ async def logs_channel(ctx):
     if canal_id:
         canal = ctx.guild.get_channel(canal_id)
         if canal:
-            await ctx.send(get_translation("logs_channel_info", ctx.guild.id, channel=canal.mention))
+            await ctx.send(get_translation("log_channel_info", ctx.guild.id, channel=canal.mention))
         else:
-            await ctx.send(get_translation("logs_channel_not_found", ctx.guild.id))
+            await ctx.send(get_translation("log_channel_not_found", ctx.guild.id))
     else:
-        await ctx.send(get_translation("logs_channel_not_found", ctx.guild.id))
+        await ctx.send(get_translation("log_channel_not_found", ctx.guild.id))
 
     logging.info(f"SERVER: {ctx.guild.id}: Command '=logs_channel' executed by {ctx.author.id} in server {ctx.guild.name}")
 
@@ -1912,187 +1955,137 @@ def verificar_espera(usuario_id):
             return tiempo_restante  # Devuelve el tiempo restante en segundos
     return 0  # No hay tiempo de espera
 
-temas_conversacion = [
-    "RuneScape Private Server (RSPS)",
-    "Juegos en general",
-    "tecnologia",
-    "programacion",
-    "noticias actuales",
-    "consejos de vida",
-    "deportes"
-]
-
-def seleccionar_tema():
-    return random.choise([tema for tema in temas_conversacion if tema != "RuneScape Private Server (RSPS)"])
 
 
-#contexto del bot: Eres un bot eficaz con inteligencia artificial, tratas en servidores bilingues de español e ingles mayormente, los serverdires cuenta con personas mayores de edad puedes hacer chistes o bromas pesadas, entiendes e lcontexto de las conversacion o del mensaje lees el ID del usuario que te hablan, no eres sensibles sabes responder a cada persona y si te intentan humillar los insultas en como lucen en la vida real, principalmente estas enfocados en servidores que juegan RuneScape
+
+async def procesar_mensaje_openai(message, historial, usuario_id):
+    try:
+        user_message = message.content.replace(f"<@{bot.user.id}>", "").strip()
+
+        prompt_base = (
+            "Eres un bot en un servidor de Discord relacionado con RuneScape. "
+            "Eres tóxico, insultas a los jugadores de RSPS y newbies de OSRS. "
+            "Respondes con sarcasmo y humor negro, pero a veces das buenos consejos del juego. "
+            "Te adaptas a las conversaciones y respondes según el humor y la toxicidad del chat. "
+            "No eres sensible a los insultos y si te atacan, los destruyes con humor ácido."
+        )
+
+        respuesta = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": prompt_base}] + historial + [
+                {"role": "user", "content": user_message}
+            ],
+            max_tokens=250,
+            temperature=0.8
+        )
+
+        contenido_respuesta = respuesta["choices"][0]["message"]["content"]
+        if f"<@{usuario_id}>" not in contenido_respuesta:
+            contenido_respuesta += f"\n<@{usuario_id}>"
+
+        await message.channel.send(contenido_respuesta)
+
+    except openai.error.RateLimitError:
+        await message.channel.send("⚠️ Me funó OpenAI por hablar mucho, espera un rato bro.")
+
+async def analizar_historial_canal(canal, limite=30):
+    mensajes = []
+    async for mensaje in canal.history(limit=limite):
+        mensajes.append({
+            "role": "user" if mensaje.author != bot.user else "assistant",
+            "content": mensaje.content,
+            "author_id": str(mensaje.author.id)
+        })
+    return list(reversed(mensajes))
+
+
 @bot.event
 async def on_message(message):
     if message.guild is None:
         return
-    logging.info(f"SERVER: {message.guild.id}: Message sent by: {message.author.id}: {message.content}. CHANNEL: {message.channel.id}")
-    if message.author.bot:
-        return
-    if message.author == bot.user:
+
+    logging.info(f"SERVER: {message.guild.id} | USER: {message.author.id} | MESSAGE: {message.content}")
+
+    if message.author.bot or message.author == bot.user:
         return
 
-        # Procesar comandos con prefijo antes que cualquier otra lógica
+    # Procesar comandos normales con prefijo
     if message.content.startswith("="):
         await bot.process_commands(message)
         return
-    
-    #ignorar al usuario si tiene una partida de trivia o ahorcado en curso
+
+    # Ignorar si el usuario tiene trivia o ahorcado activo
     if trivia_running.get(message.author.id, False) or ahorcado_running.get(message.author.id, False):
         return
 
     guild_id = str(message.guild.id)
+    usuario_id = str(message.author.id)
 
+    # Detectar links sospechosos
+    links = re.findall(r'(https?://[^\s]+|steamcommunity\.com\/[^\s]+|discord\.gg\/[^\s]+)', message.content)
 
-    # Verificar si el mensaje contiene un enlace malicioso
-    if any(es_link_malicioso(link) for link in re.findall(r'(https?://\S+)', message.content)):
-        await message.delete()
-        if isinstance(message.author, discord.Member):
-            await message.author.timeout(timedelta(weeks=1), reason="Enlace malicioso detectado")
-            await message.channel.send(f"⚠️ {message.author.mention} ha sido puesto en timeout por 1 semana por compartir un enlace malicioso.")
-        else:
-            await message.channel.send(f"⚠️ {message.author.mention} ha compartido un enlace malicioso, pero no se puede aplicar timeout.")
-        return
+    # Lista negra de palabras clave o dominios
+    palabras_prohibidas = [
+        "free", "gift", "cheap", "hack", "cracked", 
+        "steamcommunity.com/gift", "discord.gift", "freenitro"
+    ]
 
-    # Verificar si la detección de spam está activada y si el mensaje es spam
+    for link in links:
+        if any(palabra in link.lower() for palabra in palabras_prohibidas):
+            await message.delete()
+            await message.author.timeout(timedelta(weeks=1), reason="Link sospechoso detectado")
+            await message.channel.send(f"⚠️ {message.author.mention} ha sido funado por mandar un link de scam.")
+            logging.warning(f'🔗 LINK MALICIOSO DETECTADO | Usuario: {message.author} | Link: {link}')
+            return
+
+    # Detección de spam
     if security_settings.get(guild_id, {}).get("anti_spam", False) and es_spam(message.content):
         await message.delete()
-        if isinstance(message.author, discord.Member):
-            await message.author.timeout(timedelta(minutes=10), reason="Spam detectado")
-            await message.channel.send(f"⚠️ {message.author.mention} ha sido puesto en timeout por 10 minutos por spam.")
-        else:
-            await message.channel.send(f"⚠️ {message.author.mention} ha enviado spam, pero no se puede aplicar timeout.")
+        await message.channel.send(f"⚠️ {message.author.mention} bro cálmate, ¿te tienen contra el teclado o qué?")
+        await message.author.timeout(timedelta(minutes=10), reason="Spam detectado")
         return
 
+    # Reaccionar a mensajes según reglas
+    if guild_id in reaction_rules:
+        for rule in reaction_rules[guild_id]:
+            if rule["keyword"] != "*" and rule["keyword"].lower() not in message.content.lower():
+                continue
+            if rule["content_type"] == "text" and message.attachments:
+                continue
+            if rule["content_type"] == "image" and not any(a.content_type.startswith("image") for a in message.attachments):
+                continue
+            if rule.get("allowed_channels") and message.channel.id not in rule["allowed_channels"]:
+                continue
+            if rule.get("allowed_roles") and not any(role.id in rule["allowed_roles"] for role in message.author.roles):
+                continue
+            try:
+                await message.add_reaction(rule["emoji"])
+            except discord.HTTPException as e:
+                logging.error(f"Error al reaccionar: {e}")
 
-    # Verificar si el bot fue mencionado en el mensaje
+    # Analizar historial del canal
+    historial_canal = await analizar_historial_canal(message.channel, limite=30)
+    participantes = set(msg['author_id'] for msg in historial_canal if 'author_id' in msg)
+    multiple_participantes = len(participantes) > 1
+
+    # Detección de tema repetitivo
+    temas_historial = [msg['content'] for msg in historial_canal[-10:]]
+    temas_comunes = collections.Counter(temas_historial).most_common(1)
+    tema_repetitivo = temas_comunes[0][1] > 3 if temas_comunes else False
+
+    # Responder si alguien menciona al bot
     if bot.user.mention in message.content:
-        try:
-            user_message = message.content.replace(f"<@{bot.user.id}>", "").strip()
-            usuario_id = str(message.author.id)
-
-            # Verifica si el usuario necesita esperar
-            tiempo_restante = verificar_espera(usuario_id)
-            if tiempo_restante > 0:
-                await message.channel.send(f"Por favor, espera {int(tiempo_restante)} segundos antes de enviar otro mensaje. 😊")
-                return
-
-            if not user_message:
-                respuesta_bot = "¿En qué puedo ayudarte? 😊"
-                await message.channel.send(respuesta_bot)
-                registrar_interaccion(usuario_id, user_message, respuesta_bot)
-                return
-
-            # Obtiene el historial del usuario o inicializa uno nuevo
-            mensajes_historial = historial_usuarios.get(usuario_id, [])
-           
-            historial_canal = await analizar_historial_canal(message.channel, limite=75)
-            mensajes_historial.extend(historial_canal)
-
-            # Agrega el mensaje actual al historial
-            mensajes_historial.append({"role": "user", "content": user_message})
-
-            respuesta = openai.ChatCompletion.create(
-                model="gpt-4o-mini",
-                messages=[
-                {"role": "system", "content": "Tratas en servidores bilingues de español e ingles principalmente, los servidores cuenta con personas mayores de edad puedes hacer chistes o bromas o hasta decir malas palabras, entiendes el contexto de las conversacion o del mensaje lees el ID del usuario que te habla y respondes segun el chat, puedes leer el chat tras el tu funcion de historial de mensajes de los usuarios con tigo, no eres sensibles antes los insultos de los usuarios y le respondes de la misma forma que ellos te hablan"
-                "les devuelves respuestas fuertes si te intentan humillar, sabes responder a cada persona y si te intentan humillar les haces chistes pesados en como se ven fisicamente."
-                }
-                ] + mensajes_historial,  # Incluye el historial en la solicitud
-                max_tokens=350,  # Aumenta los tokens para respuestas más completas
-                temperature=0.8
-            )
-            #"Eres un bot eficaz con inteligencia artificial, tratas en servidores bilingues de español e ingles mayormente, los servidores cuenta con personas mayores de edad puedes hacer chistes o bromas pesadas, entiendes el contexto de las conversacion o del mensaje lees el ID del usuario que te hablan, no eres sensibles sabes responder a cada persona y si te intentan humillar les haces chistes pesados en como se ven fisicamente."
-            #"Tu objetivo es mantener conversaciones claras y no confundir usuarios al hablar con varias personas al tiempo, los puedes identificar por su ID o por su nombre de usuario"
-
-            contenido_respuesta = respuesta["choices"][0]["message"]["content"]
-
-            # Validar que la respuesta mencione correctamente al usuario actual
-            if f"<@{usuario_id}>" not in contenido_respuesta:
-                contenido_respuesta += f"\n<@{usuario_id}>"
-
-            await message.channel.send(contenido_respuesta)
-           
-            # Actualiza el historial con la respuesta del bot
-            registrar_interaccion(usuario_id, user_message, contenido_respuesta)
-
-        except openai.error.RateLimitError as e:
-            logging.error(f"Rate limit exceeded: {e}")
-            await message.channel.send("⚠️ Estás enviando mensajes demasiado rápido. Por favor, espera 25 segundos antes de intentarlo nuevamente.")
-            registrar_espera(usuario_id, 20)
-
-        except Exception as e:
-            logging.error(f"Error al conectar con OpenAI: {e}")
-            await message.channel.send("⚠️ Hubo un error al procesar tu solicitud.")
+        await procesar_mensaje_openai(message, historial_canal, usuario_id)
     else:
-        # Generar un mensaje aleatorio basado en el contenido del chat utilizando la IA con un porcentaje de respuesta
-        if random.random() < 0.5:  # 30% de probabilidad de responder
-            historial_canal = await analizar_historial_canal(message.channel, limite=75)
+        # Respuesta aleatoria (10% probabilidad)
+        probabilidad_respuesta = 0.1 
+        if multiple_participantes: probabilidad_respuesta += 0.20
+        if tema_repetitivo: probabilidad_respuesta += 0.25
+        if random.random() < probabilidad_respuesta:
+            await procesar_mensaje_openai(message, historial_canal, usuario_id)
 
-            #selecciona un tema de conversacion aleatoria
-            tema_seleccionado = seleccionar_tema()
+            
 
-            respuesta = openai.ChatCompletion.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                    "role": "system", "content": f"Entiendes la conversacion de los usuarios y responde con el mismo humor y agresivo no mal interpretas las conversaciones, te adaptas a cualquier conversacion de varias personas. Hoy vamos a hablar sobre {tema_seleccionado}"
-                    },
-                    {"role": "user", "content": message.content}
-                ] + historial_canal,  # Incluye el historial en la solicitud
-                max_tokens=100,
-                temperature=0.8
-            )
-            mensaje_aleatorio = respuesta["choices"][0]["message"]["content"]
-            await message.channel.send(mensaje_aleatorio)
-
-
-    """
-            # Validar que la respuesta mencione correctamente al usuario actual
-            if f"<@{usuario_id}>" not in contenido_respuesta:
-                contenido_respuesta += f"\n<@{usuario_id}>"
-    """
-
-    """
-    Escucha mensajes y aplica las reglas configuradas para reaccionar.
-    """
-
-
-    # Verificar si hay reglas configuradas para el servidor actual
-    if guild_id not in reaction_rules:
-        return
-
-    for rule in reaction_rules[guild_id]:
-        # Verificar palabra clave (Wildcard `*` para todos los mensajes)
-        if rule["keyword"] != "*" and rule["keyword"].lower() not in message.content.lower():
-            continue
-
-        # Verificar tipo de contenido
-        if rule["content_type"] == "text" and message.attachments:
-            continue
-        if rule["content_type"] == "image" and not any(a.content_type.startswith("image") for a in message.attachments):
-            continue
-        if rule["content_type"] == "video" and not any(a.content_type.startswith("video") for a in message.attachments):
-            continue
-
-        # Verificar canales permitidos
-        if rule.get("allowed_channels") and message.channel.id not in rule["allowed_channels"]:
-            continue
-
-        # Verificar roles permitidos
-        if rule.get("allowed_roles") and not any(role.id in rule["allowed_roles"] for role in message.author.roles):
-            continue
-
-        # Reaccionar al mensaje
-        try:
-            await message.add_reaction(rule["emoji"])
-        except discord.HTTPException as e:
-            logging.error(f"Error al reaccionar: {e}")
 
 
 # Guardar configuraciones al cerrar
@@ -2727,6 +2720,7 @@ def cargar_configuracion_mensajes():
 def guardar_configuracion_mensajes(config):
     with open("config_mensajes.json", "w") as file:
         json.dump(config, file, indent=4)
+        
 
 # Cargar la configuración inicial
 config_mensajes = cargar_configuracion_mensajes()
@@ -2752,7 +2746,6 @@ async def on_command_error(ctx, error):
         # Maneja otros errores o los muestra en consola
         logging.info(f"Error en el comando {ctx.command}: {error}")
         await ctx.send(get_translation("command_error", ctx.guild.id))
-
 
 
 
