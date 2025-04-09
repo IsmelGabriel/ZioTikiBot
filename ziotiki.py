@@ -8,14 +8,15 @@ import openai  # type: ignore
 import os
 import atexit
 import re
-import requests
+import requests # type: ignore
 import collections
-#from keep_alive import keep_alive
+import youtube_dl
 from asyncio import Lock
 from discord import app_commands # type: ignore
 from datetime import datetime, timedelta
 from discord.ext import commands # type: ignore
 from itertools import cycle
+
 
 
 
@@ -196,9 +197,35 @@ def es_link_malicioso(link):
 
 # Función para verificar si un mensaje es spam
 def es_spam(mensaje):
-    # Aquí puedes implementar tu lógica para detectar spam
-    # Por ejemplo, puedes verificar si el mensaje se repite muchas veces en poco tiempo
-    return False
+    usuario_id = mensaje.author.id
+    contenido = mensaje.content.lower()
+    canal_id = mensaje.channel.id
+
+    # Inicializar el historial de mensajes si no existe
+    if usuario_id not in historial_usuarios:
+        historial_usuarios[usuario_id] = []
+
+    # Agregar el mensaje al historial del usuario
+    historial_usuarios[usuario_id].append((contenido, time.time()))
+
+    # Limpiar el historial de mensajes antiguos (más de 10 segundos)
+    historial_usuarios[usuario_id] = [
+        (msg, timestamp) for msg, timestamp in historial_usuarios[usuario_id]
+        if time.time() - timestamp < 10
+    ]
+
+    # Verificar si hay más de 5 mensajes en los últimos 10 segundos
+    if len(historial_usuarios[usuario_id]) > 5:
+        return historial_usuarios[usuario_id]
+
+    # Verificar si el mismo mensaje se repite más de 3 veces en los últimos 10 segundos
+    mensajes_repetidos = collections.Counter(
+        msg for msg, timestamp in historial_usuarios[usuario_id]
+    )
+    if any(count > 3 for count in mensajes_repetidos.values()):
+        return historial_usuarios[usuario_id]
+
+    return []
 
 # Comando para activar o desactivar la detección de spam
 @bot.command()
@@ -1270,6 +1297,125 @@ async def participantes(ctx, sorteo_id: int = None):
 
 
 
+#hacer spam del usuario que lo activa
+@bot.command()
+async def spam(ctx, cantidad: int = 20, *, message: str = None):
+    """Spam el mensaje del usuario que lo activa."""
+    if ctx.guild is None:
+        return
+    if not message:
+        await ctx.send("❌ Debes proporcionar un mensaje para spamear.")
+        return
+    if cantidad <= 0:
+        await ctx.send("❌ La cantidad debe ser mayor a 0.")
+        return
+
+    for _ in range(cantidad):
+        await ctx.send(message)
+    logging.info(f"SERVIDOR: {ctx.guild.id}: Comando `spam` ejecutado por {ctx.author.id} en el servidor {ctx.guild.name}")
+
+
+
+
+
+
+
+
+
+
+
+""" Sistema para reproducir musica """
+
+# Configuración de youtube-dl/yt-dlp
+youtube_dl.utils.bug_reports_message = lambda: ""
+ytdl_format_options = {
+    "format": "bestaudio/best",
+    "postprocessors": [{
+        "key": "FFmpegExtractAudio",
+        "preferredcodec": "mp3",
+        "preferredquality": "192",
+    }],
+    "quiet": True,
+    "noplaylist": True,
+}
+ffmpeg_options = {
+    "options": "-vn",
+}
+ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+
+class YTDLSource(discord.PCMVolumeTransformer):
+    def __init__(self, source, *, data, volume=0.5):
+        super().__init__(source, volume)
+        self.data = data
+        self.title = data.get("title")
+        self.url = data.get("url")
+
+    @classmethod
+    async def from_url(cls, url, *, loop=None, stream=False):
+        loop = loop or asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+
+        if "entries" in data:
+            # Toma el primer elemento de la lista de reproducción
+            data = data["entries"][0]
+
+        filename = data["url"] if stream else ytdl.prepare_filename(data)
+        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+
+# Comando para unirse a un canal de voz
+@bot.command()
+async def join(ctx):
+    """El bot se une al canal de voz del usuario."""
+    if ctx.author.voice is None:
+        await ctx.send("❌ No estás en un canal de voz.")
+        return
+
+    channel = ctx.author.voice.channel
+    if ctx.voice_client is not None:
+        return await ctx.voice_client.move_to(channel)
+
+    await channel.connect()
+
+# Comando para salir del canal de voz
+@bot.command()
+async def leave(ctx):
+    """El bot sale del canal de voz."""
+    if ctx.voice_client is None:
+        await ctx.send("❌ No estoy en un canal de voz.")
+        return
+
+    await ctx.voice_client.disconnect()
+
+# Comando para reproducir música
+@bot.command()
+async def pl(ctx, *, url):
+    """Reproduce música desde una URL de YouTube."""
+    if ctx.voice_client is None:
+        await ctx.send("❌ Primero usa el comando `=join` para que me una a un canal de voz.")
+        return
+
+    async with ctx.typing():
+        try:
+            player = await YTDLSource.from_url(url, loop=bot.loop, stream=True)
+            ctx.voice_client.stop()  # Detener cualquier reproducción en curso
+            ctx.voice_client.play(player, after=lambda e: print(f"Error: {e}") if e else None)
+            await ctx.send(f"🎶 Reproduciendo: **{player.title}**")
+        except Exception as e:
+            await ctx.send(f"❌ Error al reproducir la música: {e}")
+
+# Comando para detener la música
+@bot.command()
+async def st(ctx):
+    """Detiene la música que se está reproduciendo."""
+    if ctx.voice_client is None or not ctx.voice_client.is_playing():
+        await ctx.send("❌ No hay música reproduciéndose.")
+        return
+
+    ctx.voice_client.stop()
+    await ctx.send("⏹️ Música detenida.")
+
+
+
 
 
 
@@ -2039,10 +2185,17 @@ async def on_message(message):
             return
 
     # Detección de spam
-    if security_settings.get(guild_id, {}).get("anti_spam", False) and es_spam(message.content):
-        await message.delete()
+    mensajes_spam = es_spam(message)
+    if security_settings.get(guild_id, {}).get("anti_spam", False) and mensajes_spam:
+        for msg, timestamp in mensajes_spam:
+            async for msg_to_delete in message.channel.history(limit=20):
+                if msg_to_delete.content.lower() == msg and msg_to_delete.author.id == message.author.id:
+                    await msg_to_delete.delete()
         await message.channel.send(f"⚠️ {message.author.mention} bro cálmate, ¿te tienen contra el teclado o qué?")
-        await message.author.timeout(timedelta(minutes=10), reason="Spam detectado")
+        try:
+            await message.author.timeout(timedelta(minutes=10), reason="Spam detectado")
+        except discord.Forbidden:
+            await message.channel.send(f"❌ No tengo permisos para sancionar a {message.author.mention}.")
         return
 
     # Reaccionar a mensajes según reglas
@@ -2737,7 +2890,7 @@ async def on_command_error(ctx, error):
         await ctx.send(get_translation("missing_perms", ctx.guild.id))
         logging.info(f"SERVIDOR: {ctx.guild.id}: Intento no autorizado de {ctx.author.id} para ejecutar `{ctx.command}` en {ctx.guild.id}.")
     elif isinstance(error, commands.CommandNotFound):
-        await ctx.send(get_translation("command_NotFound", ctx.guild.id))
+        await ctx.send(get_translation("command_not_found", ctx.guild.id))
         logging.info(f"SERVIDOR: {ctx.guild.id}: Comando no encontrado: {ctx.message.content} por parte de {ctx.author.id}.")
     elif isinstance(error, commands.MissingRole):
         await ctx.send(get_translation("missing_perms", ctx.guild.id))
