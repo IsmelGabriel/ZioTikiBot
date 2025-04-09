@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "ziotikibot-ydah",
+  "private_key_id": "cd7bbe4d48a47d015deafb86f9a7dd8a1eee9cd3",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDiZ6kXGlwKeLFy\nymLpz73uMFo/haiFCz7kGEm4AWATfH0feAkHh1WyW55j9paUI7V9kcJ/oNqHkCWM\no5fEzWVa4amEa2bXpKVlBn+VzoA10DDBSZkPh7UfDET5gK3+YZb3rqmZouAznaeH\nI6B9F48rulj6OIodbqDXYImyg6EZbEe8Ga0F3M77wys1Y0bfWA9SLkM6Y/Q+vIQm\nmebHpl4M6PV6JDZzHwXI9BbnZ46ZlH/E0FHv161Je1bLzeT4GnO6cqCbCCOMkcc+\nY2D6AsAAnO2Ve0UIhItrekeZZwqZL2eD0jzKVWClMQ3fFdNtNIkOWrGYSuVRY4Xs\nX+u8plVPAgMBAAECggEAF4sOA1ADaDdaxIQVOxkWOBGhIN/mQUeFF7UK3W6PLheQ\n71fNIJJLMAvk8aIv0GHSOqeQoTL55oTv0qskWhu9wXCb7yA4Bo6hgFrno41gubfX\nihH8L6g+BmeBOKzP6xb82u63xjkwtU1coWnsA3YStkpffE2q1xqs8Rih2QVlGD5/\nNZi+X5Y6UBHEcB7gerhDfblO1ZxaWzF0W+B0lQL9O/5aKS6Sa9Y7D+5av9Pk8RUd\nnVrZi6q5zIjmvVe+NkaQ8SCjpCc/PnB0ceAJPv23c8sWrsz6gjS6IXyf/cE29rMz\nQNKkW7+ZC31tJJu4JYKHKooYqGKmR3fFeKujOa5PgQKBgQD2hy6PAhxfggwk5kD0\njpt93zlOhGyZukWb1Timauu8Kooo9YY9G5PxlQAigLx4HKjcyxvxj+tIwNGu/nnu\nr9wDPuk8RvXgcpmkg9+Wm+mzGYJvgGp31QcriV548mUCYqs1oIPQ0IryP9ZvIz+T\nLENNACLgkoTrpmPQnzqoS9LHDwKBgQDrGozVDXVPkoEZ2MHoxm9UCDT7XNtel2dp\nCbbha4IDjUPvSEyMuoAdLLmXiRcrL8yLeuhxtb9V8vsL+gLgrp1bHrs18cUgvfLE\nsWf9Cmf+YkGUNjXAzErDTsDiSMBrAo8XGpE0QN0lXilZgGpgNlLp5m19AstSbYEe\ngId/azWNwQKBgQDhSD1awDIPcTcJzUQUd/FOAFxNDSR1AsyzkBC5u0F67WDd9yhZ\n1UbH4EKERSJ1nLMPOahqgfsfu9yhzri8TwZ+DNJ0m9/64J7YwQ3kgsv4N9qDbFVe\n9lQcC+dCHTgDCwmr8ugiPUCMCZw6aXqiUjOaPQKiOCKxeZcDQU8IFmoiLwKBgQCX\nO0vuXKrilb4gDzOk9ch1SJY0PyYJseDeS1ZtqMdIW52glWRQfkOdAMEdvhy+NhAg\nhN5zDtNWiWd968PgHdKw45LPf4crqaQ5bFkVB5WfqDrBCSIItCE/gzBGH0BPVaUP\n2pIfB755pBl7LkS/QRKSzRwO9zYs/q25HjqK9z7KwQKBgQDzKMBZ98kaUW5E/wLH\n0o1c/5eO9tDI8JxJKesUvZV/D3fHUwBrBNH8qcUy+hZCE6g5o2sqgHreCOeQWefk\nKMrPmhIq1KoMcOcEXDgh+tSxa+8zoY+LnPjmiLqZEyUD8Txy6YnjAgqjFrgpBOBz\nLRlkqge0Exi89Ooo1F8QAdcFXQ==\n-----END PRIVATE KEY-----\n",
+  "client_email": "ziotiki-bot-discord@ziotikibot-ydah.iam.gserviceaccount.com",
+  "client_id": "111057349339467302985",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/ziotiki-bot-discord%40ziotikibot-ydah.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

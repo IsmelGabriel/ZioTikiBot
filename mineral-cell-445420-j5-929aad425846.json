@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "mineral-cell-445420-j5",
+  "private_key_id": "929aad4258467ffbf0726e718347428fa04cf874",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDHsF8lVPEw0MSg\nWkwInaBrs/Nifik3g6s2U5EE/cajHWMuXG8CA4Nfwd8umNAVoFlv3esR29wMUbGM\necMMQ7lsu/CmHNF5Uc/XABylAOLHwDh93qPZ1BGh9Wv0gvPUGZdPB7qvcgSYmuWy\npbnp9TFUIq98ToG7tzQcmATQwNuBVWz3VtmVqHnmvefZzIxnAt6bYsmzUXnSTqTr\n+sePYVD35W7XglyNkLkN+efEtEa0h7RRTvDEx3C/LAktYZSmVB+qUPyrB+fD/Fk8\nIVGQnjTvk0iynd03pttepXCfMDhlgZrr6J9bzSWDA0ecxtE4DoOfqUIIes8giRHF\n8kEbf0hXAgMBAAECggEAAzbLWT+kQCu5YSFYREfmi0U9X3JLZImEfx6E4Nvaz3Og\nzeAOqK14zFjuUtgtJTlMUeN0WKMSyB9P0xnUnK/Bs3EqSZTWKZ86T/9q9pxB34Lb\nBepISzBsIOYL2PF7TjMj6dGPMiq3eI3/BiCVEkxwK6ar72gYviDlQFPmuUYZYlv/\n0dma7XWOS6UCi2sahHNPrnIpkfzeY5GQN8RoVUUg/s3Z4+d9fW8e/Mo5VIgUOpzw\npZSQ5ktcdZw3gjKjxQU9LqkkV6k9Z3ZAffN+uvNubBkuaAAGz6arrksNTULW4o3m\n1ReBhHR2+1zFgJWl5vFV7LkQj6DdUKn9h4V4JTSzgQKBgQD5D8jMgkC0VshD3uJi\nzml3M+UnKyqealSn3046cFnF5FxAW/IDolTMDV4IQK4/E3nYnl5JnRRwaLA7BwCF\nzFUS9sbQ1/mirP4BSIuLREaSKIgkLGh6bAOuJeOesuEc2yWtf71Q7fsltMjgOfEZ\nHf8zfPosYEzAALjcm2TfPPnrgQKBgQDNQHq66KezJmUm+HOpzjHncWXtkXhFEs2W\nT3cDZAD3dGhKP9mgKt+Zsxknc9Ndft/Yau4cC5rfa2SuIp8x9m394Yg6mHdMpSxi\nqV1ir6UqmN3MbGDK8sF5HMAjeP7xdYoRBNylxGzki20ec5WmzuOKCznqp07gcIPq\nNj4FmoX/1wKBgDSmT45b4o284qzmSvkUJVtbjw+Oon3GgIrUO9dCtNeOhKneRfTa\ntg5ErSIVekA/P7y5DbmGCTISD18LBeNC5KETpce0QENRSoi+6zDPiBORmeX7tUJb\n3xNLUyjTK59L/FUG8eBPzo2T//rWhM8IdlBOFRyYZuEXxfxspRBD9ZkBAoGAd1rN\ng68TBeyH2beUmuPaxTl+Cj4TcCdVAdlH3eLjZQJ+Ot8SUD9eM2Sgdf62pKHIzXKw\n8AIXl2A99b0QUd95aq8hpuFOTnWmb+EI+wAkzbaDFALZ7mpn82Oyn24W4pZ1KRxo\nqsSkhepGE/Umyw935ahNj5SnG4CSVTohquSGk5UCgYEAj3LDpBmmXh8Cro7YOWKs\n9qlJ2gDO40yYza8gD0Pzgvd6OsB28AqWmOh1E2U4d9ec/nngOtgyqH7d0aF778qo\nMW4qqfPRAZQU8sVM9LkLpIzM6URsNfp2lzWwouqP3oHWOq63PE5U08z+ckVryCpD\nWc8MTtCgpEfz7BiNxGKu80A=\n-----END PRIVATE KEY-----\n",
+  "client_email": "ziotiki-bot@mineral-cell-445420-j5.iam.gserviceaccount.com",
+  "client_id": "104536534333968959656",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/ziotiki-bot%40mineral-cell-445420-j5.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
