@@ -10,12 +10,13 @@ import atexit
 import re
 import requests # type: ignore
 import collections
-import youtube_dl
+import yt_dlp as youtube_dl  # Cambia youtube_dl por yt_dlp
 from asyncio import Lock
 from discord import app_commands # type: ignore
 from datetime import datetime, timedelta
 from discord.ext import commands # type: ignore
 from itertools import cycle
+from discord import FFmpegPCMAudio
 
 
 
@@ -1326,7 +1327,7 @@ async def spam(ctx, cantidad: int = 20, *, message: str = None):
 
 """ Sistema para reproducir musica """
 
-# Configuración de youtube-dl/yt-dlp
+# Configuración de yt-dlp
 youtube_dl.utils.bug_reports_message = lambda: ""
 ytdl_format_options = {
     "format": "bestaudio/best",
@@ -1337,6 +1338,7 @@ ytdl_format_options = {
     }],
     "quiet": True,
     "noplaylist": True,
+    "default_search": "ytsearch",  # Configura búsqueda automática
 }
 ffmpeg_options = {
     "options": "-vn",
