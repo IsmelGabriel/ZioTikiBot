@@ -10,13 +10,14 @@ import atexit
 import re
 import requests # type: ignore
 import collections
-import yt_dlp as youtube_dl  # Cambia youtube_dl por yt_dlp
+import yt_dlp as youtube_dl  # type: ignore
+# Cambia youtube_dl por yt_dlp 
 from asyncio import Lock
 from discord import app_commands # type: ignore
 from datetime import datetime, timedelta
 from discord.ext import commands # type: ignore
 from itertools import cycle
-from discord import FFmpegPCMAudio
+from discord import FFmpegPCMAudio # type: ignore
 
 
 
@@ -1328,6 +1329,8 @@ async def spam(ctx, cantidad: int = 20, *, message: str = None):
 """ Sistema para reproducir musica """
 
 # Configuración de yt-dlp
+
+"""
 youtube_dl.utils.bug_reports_message = lambda: ""
 ytdl_format_options = {
     "format": "bestaudio/best",
@@ -1364,10 +1367,13 @@ class YTDLSource(discord.PCMVolumeTransformer):
         filename = data["url"] if stream else ytdl.prepare_filename(data)
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
+"""
+
+"""
 # Comando para unirse a un canal de voz
 @bot.command()
 async def join(ctx):
-    """El bot se une al canal de voz del usuario."""
+    ""El bot se une al canal de voz del usuario.""
     if ctx.author.voice is None:
         await ctx.send("❌ No estás en un canal de voz.")
         return
@@ -1381,7 +1387,7 @@ async def join(ctx):
 # Comando para salir del canal de voz
 @bot.command()
 async def leave(ctx):
-    """El bot sale del canal de voz."""
+    ""El bot sale del canal de voz.""
     if ctx.voice_client is None:
         await ctx.send("❌ No estoy en un canal de voz.")
         return
@@ -1391,7 +1397,7 @@ async def leave(ctx):
 # Comando para reproducir música
 @bot.command()
 async def pl(ctx, *, url):
-    """Reproduce música desde una URL de YouTube."""
+    ""Reproduce música desde una URL de YouTube.""
     if ctx.voice_client is None:
         await ctx.send("❌ Primero usa el comando `=join` para que me una a un canal de voz.")
         return
@@ -1408,15 +1414,14 @@ async def pl(ctx, *, url):
 # Comando para detener la música
 @bot.command()
 async def st(ctx):
-    """Detiene la música que se está reproduciendo."""
+    ""Detiene la música que se está reproduciendo.""
     if ctx.voice_client is None or not ctx.voice_client.is_playing():
         await ctx.send("❌ No hay música reproduciéndose.")
         return
 
     ctx.voice_client.stop()
     await ctx.send("⏹️ Música detenida.")
-
-
+"""
 
 
 
